@@ -84,6 +84,32 @@ function App() {
   const grandTotal =
     cartTotal + takeawayTotal;
 
+  /*
+   * Pastries do not require takeaway packs.
+   * All other current menu categories require
+   * a takeaway pack.
+   */
+  function requiresTakeaway(item: MenuItem) {
+    return item.category !== "Pastries";
+  }
+
+  /*
+   * Checks whether the current cart contains
+   * at least one item that requires takeaway.
+   */
+  function cartRequiresTakeaway() {
+    return cart.some((cartItem) => {
+      const menuItem = menuItems.find(
+        (menuItem) =>
+          menuItem.id === cartItem.id
+      );
+
+      return menuItem
+        ? requiresTakeaway(menuItem)
+        : false;
+    });
+  }
+
   function addToCart(
     item: MenuItem,
     optionName?: string,
@@ -91,10 +117,16 @@ function App() {
   ) {
     if (price === undefined) return;
 
-    // Customer must select takeaway first
-    if (takeawayQuantity === 0) {
+    /*
+     * Only meals require takeaway packs.
+     * Pastries can be added directly.
+     */
+    if (
+      requiresTakeaway(item) &&
+      takeawayQuantity === 0
+    ) {
       alert(
-        "Please select your takeaway pack before adding food to your order."
+        "Please select your takeaway pack before adding this meal to your order."
       );
 
       return;
@@ -186,14 +218,6 @@ function App() {
   }
 
   function sendToWhatsApp() {
-    if (takeawayQuantity === 0) {
-      alert(
-        "Please select at least one takeaway pack."
-      );
-
-      return;
-    }
-
     if (cart.length === 0) {
       alert(
         "Please add at least one food item to your cart."
@@ -202,14 +226,46 @@ function App() {
       return;
     }
 
+    /*
+     * Only require takeaway when the cart contains
+     * an item that needs one.
+     */
     if (
-      !customerName.trim() ||
-      !phone.trim() ||
-      !deliveryLocation ||
-      !specificLocation.trim()
+      cartRequiresTakeaway() &&
+      takeawayQuantity === 0
     ) {
       alert(
-        "Please fill in all delivery details."
+        "Please select at least one takeaway pack for your meal."
+      );
+
+      return;
+    }
+
+    if (!customerName.trim()) {
+      alert("Please enter your name.");
+
+      return;
+    }
+
+    if (!phone.trim()) {
+      alert(
+        "Please enter your phone number."
+      );
+
+      return;
+    }
+
+    if (!deliveryLocation) {
+      alert(
+        "Please select your delivery area."
+      );
+
+      return;
+    }
+
+    if (!specificLocation.trim()) {
+      alert(
+        "Please enter your specific delivery location."
       );
 
       return;
@@ -236,6 +292,11 @@ function App() {
       })
       .join("\n");
 
+    const takeawaySection =
+      takeawayQuantity > 0
+        ? `${takeawayQuantity} × ₦${TAKEAWAY_PRICE.toLocaleString()} — ₦${takeawayTotal.toLocaleString()}`
+        : "None";
+
     const message = `Hello Yara's Bite Kitchen 👋
 
 I'd like to place an order.
@@ -246,7 +307,7 @@ ORDER
 ${orderLines}
 
 TAKEAWAY PACKS:
-${takeawayQuantity} × ₦${TAKEAWAY_PRICE.toLocaleString()} — ₦${takeawayTotal.toLocaleString()}
+${takeawaySection}
 
 FOOD TOTAL: ₦${cartTotal.toLocaleString()}
 TAKEAWAY TOTAL: ₦${takeawayTotal.toLocaleString()}
@@ -419,9 +480,9 @@ Thank you!`;
           </h2>
 
           <p>
-            Select your takeaway
-            pack first, then choose
-            your favourite meals.
+            Select a takeaway pack for
+            meals, or order snacks and
+            pastries without one.
           </p>
 
         </div>
@@ -432,7 +493,7 @@ Thank you!`;
           <div className="takeaway-info">
 
             <p className="eyebrow">
-              REQUIRED
+              FOR MEALS
             </p>
 
             <h3>
@@ -440,9 +501,9 @@ Thank you!`;
             </h3>
 
             <p>
-              Select the number of
-              takeaway packs you
-              need.
+              Select takeaway packs when
+              ordering meals. Snacks and
+              pastries don't require one.
             </p>
 
             <strong>
@@ -486,12 +547,13 @@ Thank you!`;
 
         </section>
 
-        {/* TAKEAWAY WARNING */}
+        {/* TAKEAWAY INFORMATION */}
         {takeawayQuantity === 0 && (
           <p className="takeaway-warning">
-            Please select at least one
-            takeaway pack before
-            adding food to your order.
+            Takeaway packs are required
+            for meals. Snacks and
+            pastries can be ordered
+            without a pack.
           </p>
         )}
 
@@ -734,28 +796,30 @@ Thank you!`;
                 </div>
 
                 {/* TAKEAWAY SUMMARY */}
-                <div className="takeaway-summary">
+                {takeawayQuantity > 0 && (
+                  <div className="takeaway-summary">
 
-                  <div>
+                    <div>
+
+                      <strong>
+                        Takeaway Packs
+                      </strong>
+
+                      <span>
+                        {takeawayQuantity}{" "}
+                        × ₦
+                        {TAKEAWAY_PRICE.toLocaleString()}
+                      </span>
+
+                    </div>
 
                     <strong>
-                      Takeaway Packs
+                      ₦
+                      {takeawayTotal.toLocaleString()}
                     </strong>
 
-                    <span>
-                      {takeawayQuantity}{" "}
-                      × ₦
-                      {TAKEAWAY_PRICE.toLocaleString()}
-                    </span>
-
                   </div>
-
-                  <strong>
-                    ₦
-                    {takeawayTotal.toLocaleString()}
-                  </strong>
-
-                </div>
+                )}
 
                 {/* TOTALS */}
                 <div className="cart-total">
@@ -771,18 +835,20 @@ Thank you!`;
 
                 </div>
 
-                <div className="cart-total">
+                {takeawayQuantity > 0 && (
+                  <div className="cart-total">
 
-                  <span>
-                    Takeaway
-                  </span>
+                    <span>
+                      Takeaway
+                    </span>
 
-                  <strong>
-                    ₦
-                    {takeawayTotal.toLocaleString()}
-                  </strong>
+                    <strong>
+                      ₦
+                      {takeawayTotal.toLocaleString()}
+                    </strong>
 
-                </div>
+                  </div>
+                )}
 
                 <div className="cart-total grand-total">
 
