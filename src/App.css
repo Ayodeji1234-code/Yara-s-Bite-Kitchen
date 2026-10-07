@@ -1051,6 +1051,124 @@ footer > p {
 }
 
 /* =========================================
+   SCREEN NOTIFICATION
+========================================= */
+
+.screen-notification {
+  position: fixed;
+
+  top: 90px;
+  right: 20px;
+
+  z-index: 999999;
+
+  width: 360px;
+  max-width: calc(100vw - 40px);
+
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 14px;
+
+  padding: 16px 18px;
+
+  background: #8d0d12;
+
+  color: white;
+
+  border-radius: 14px;
+
+  box-shadow:
+    0 15px 40px
+    rgba(0, 0, 0, 0.25);
+
+  animation:
+    notificationSlideIn
+    0.3s ease-out;
+}
+
+.notification-content {
+  flex: 1;
+
+  min-width: 0;
+}
+
+.notification-content strong {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: white;
+
+  font-size: 15px;
+
+  font-weight: 800;
+}
+
+.notification-content p {
+  margin: 0;
+
+  color: white;
+
+  font-size: 14px;
+
+  line-height: 1.5;
+}
+
+.screen-notification button {
+  width: 30px;
+  height: 30px;
+
+  flex-shrink: 0;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background:
+    rgba(255, 255, 255, 0.15);
+
+  color: white;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.screen-notification button:hover {
+  background:
+    rgba(255, 255, 255, 0.25);
+
+  transform: scale(1.05);
+}
+
+@keyframes notificationSlideIn {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+}
+
+/* =========================================
    MOBILE
 ========================================= */
 
@@ -1078,6 +1196,7 @@ footer > p {
 
   .cart-button {
     padding: 9px 12px;
+
     gap: 6px;
   }
 
@@ -1102,7 +1221,8 @@ footer > p {
   }
 
   .hero h2 {
-    font-size: clamp(32px, 9vw, 46px);
+    font-size:
+      clamp(32px, 9vw, 46px);
 
     line-height: 1.08;
 
@@ -1163,7 +1283,8 @@ footer > p {
   /* MENU */
 
   .menu-section {
-    padding: 55px 18px 70px;
+    padding:
+      55px 18px 70px;
   }
 
   .section-heading {
@@ -1279,9 +1400,11 @@ footer > p {
 
     max-height: 94vh;
 
-    border-radius: 22px 22px 0 0;
+    border-radius:
+      22px 22px 0 0;
 
-    padding: 22px 18px 30px;
+    padding:
+      22px 18px 30px;
   }
 
   .cart-header {
@@ -1416,5 +1539,42 @@ footer > p {
 
     font-size: 11px;
   }
+
+  .screen-notification {
+    top: 85px;
+
+    right: 12px;
+
+    width:
+      calc(100vw - 24px);
+
+    max-width: none;
+
+    padding:
+      15px 16px;
+  }
+
+  .notification-content p {
+    font-size: 13px;
+  }
 }
 
+/* =========================================
+   NOTIFICATION ANIMATION
+========================================= */
+
+@keyframes notificationSlideIn {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+}
