@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import {
   ShoppingBag,
@@ -31,7 +30,12 @@ const categories = [
 ];
 
 /*
- * ONLY these categories require takeaway packs.
+ * ONLY these categories require the customer
+ * to select at least one takeaway pack.
+ *
+ * IMPORTANT:
+ * The number of takeaway packs does NOT limit
+ * the quantity of food the customer can order.
  */
 const TAKEAWAY_CATEGORIES = [
   "Rice Dishes",
@@ -56,15 +60,19 @@ function App() {
     useState(false);
 
   /*
-   * Takeaway pack quantity.
-   * There is no maximum.
+   * Number of takeaway packs selected by customer.
+   *
+   * There is NO maximum.
+   *
+   * Example:
+   * 1 pack + Rice x 10 is allowed.
    */
   const [takeawayQuantity, setTakeawayQuantity] =
     useState(0);
 
   /*
-   * Item waiting for a takeaway pack
-   * before it can be added.
+   * Food item waiting for the customer
+   * to select a takeaway pack.
    */
   const [pendingItem, setPendingItem] =
     useState<PendingItem | null>(null);
@@ -128,7 +136,7 @@ function App() {
 
   /*
    * Determine whether a menu item
-   * requires a takeaway pack.
+   * requires at least one takeaway pack.
    */
   function requiresTakeaway(
     item: MenuItem
@@ -139,28 +147,18 @@ function App() {
   }
 
   /*
-   * Calculate the number of takeaway
-   * packs required by food currently
-   * in the cart.
+   * IMPORTANT:
+   *
+   * Takeaway packs are NOT calculated from
+   * the amount of food in the cart.
+   *
+   * The customer chooses how many packs
+   * they want.
+   *
+   * Therefore this is always 0 for the
+   * purpose of food validation.
    */
-  const requiredTakeawayQuantity =
-    cart.reduce((total, cartItem) => {
-      const menuItem = menuItems.find(
-        (menuItem) =>
-          menuItem.id === cartItem.id
-      );
-
-      if (
-        menuItem &&
-        requiresTakeaway(menuItem)
-      ) {
-        return (
-          total + cartItem.quantity
-        );
-      }
-
-      return total;
-    }, 0);
+  const requiredTakeawayQuantity = 0;
 
   /*
    * Takeaway cost.
@@ -175,7 +173,7 @@ function App() {
     cartTotal + takeawayTotal;
 
   /*
-   * Show notification on the screen.
+   * Show notification on screen.
    */
   function showNotification(
     message: string
@@ -237,8 +235,22 @@ function App() {
   /*
    * Add food to cart.
    *
-   * Rice Dishes, Pasta & Noodles and
-   * Protein require takeaway packs.
+   * IMPORTANT:
+   *
+   * Rice, Pasta & Protein only require
+   * at least ONE takeaway pack.
+   *
+   * After one pack has been selected,
+   * the customer can add the food as many
+   * times as they want.
+   *
+   * Example:
+   *
+   * Takeaway × 1
+   * Rice × 4
+   * Chicken × 2
+   *
+   * ALL allowed.
    */
   function addToCart(
     item: MenuItem,
@@ -268,8 +280,8 @@ function App() {
     }
 
     /*
-     * If there are no takeaway packs,
-     * don't add the food yet.
+     * Rice, Pasta & Protein require at least
+     * one takeaway pack.
      */
     if (takeawayQuantity === 0) {
       setPendingItem({
@@ -286,28 +298,10 @@ function App() {
     }
 
     /*
-     * Every additional quantity of
-     * qualifying food needs another pack.
-     */
-    const requiredAfterAdding =
-      requiredTakeawayQuantity + 1;
-
-    /*
-     * Not enough takeaway packs.
-     */
-    if (
-      takeawayQuantity <
-      requiredAfterAdding
-    ) {
-      showNotification(
-        `You need another takeaway pack before adding more ${item.name}.`
-      );
-
-      return;
-    }
-
-    /*
-     * Enough packs — add the food.
+     * At least one pack exists.
+     *
+     * Food quantity is now completely
+     * independent of takeaway quantity.
      */
     addItemToCart(
       item,
@@ -322,6 +316,15 @@ function App() {
 
   /*
    * Increase food quantity from cart.
+   *
+   * There is NO takeaway restriction here.
+   *
+   * If the customer has one takeaway pack,
+   * they can increase Rice from:
+   *
+   * 1 → 2 → 3 → 4 → 5 → ...
+   *
+   * without buying additional packs.
    */
   function increaseQuantity(
     index: number
@@ -330,34 +333,6 @@ function App() {
 
     if (!cartItem) {
       return;
-    }
-
-    const menuItem = menuItems.find(
-      (item) =>
-        item.id === cartItem.id
-    );
-
-    /*
-     * Qualifying food needs an additional
-     * takeaway pack for every additional unit.
-     */
-    if (
-      menuItem &&
-      requiresTakeaway(menuItem)
-    ) {
-      const requiredAfterIncrease =
-        requiredTakeawayQuantity + 1;
-
-      if (
-        takeawayQuantity <
-        requiredAfterIncrease
-      ) {
-        showNotification(
-          "Please select another takeaway pack before increasing this item's quantity."
-        );
-
-        return;
-      }
     }
 
     setCart(
@@ -410,6 +385,10 @@ function App() {
    * Add takeaway pack.
    *
    * There is NO maximum.
+   *
+   * If a food item was waiting because
+   * no takeaway pack had been selected,
+   * the first pack automatically adds it.
    */
   function increaseTakeaway() {
     const newQuantity =
@@ -423,41 +402,32 @@ function App() {
      * If a food item was waiting for
      * takeaway selection, add it now.
      */
-    if (
-      pendingItem &&
-      newQuantity >= 1
-    ) {
+    if (pendingItem) {
+      const itemToAdd = pendingItem;
+
       addItemToCart(
-        pendingItem.item,
-        pendingItem.optionName,
-        pendingItem.price
+        itemToAdd.item,
+        itemToAdd.optionName,
+        itemToAdd.price
       );
 
       showNotification(
-        `${pendingItem.item.name} added to your cart.`
+        `${itemToAdd.item.name} added to your cart.`
       );
+
+      setPendingItem(null);
     }
   }
 
   /*
    * Remove takeaway pack.
    *
-   * Cannot go below the amount
-   * required by the current food.
+   * Since takeaway packs are manually
+   * selected by the customer, they can
+   * reduce them down to zero.
    */
   function decreaseTakeaway() {
-    if (
-      takeawayQuantity <=
-      requiredTakeawayQuantity
-    ) {
-      showNotification(
-        `You need at least ${requiredTakeawayQuantity} takeaway pack${
-          requiredTakeawayQuantity !== 1
-            ? "s"
-            : ""
-        } for your current food order.`
-      );
-
+    if (takeawayQuantity <= 0) {
       return;
     }
 
@@ -483,17 +453,33 @@ function App() {
 
     /*
      * Takeaway validation.
+     *
+     * This only matters if there are
+     * Rice, Pasta or Protein items.
+     *
+     * One pack is enough to allow
+     * unlimited quantities of these foods.
      */
+    const hasTakeawayFood = cart.some(
+      (cartItem) => {
+        const menuItem = menuItems.find(
+          (item) =>
+            item.id === cartItem.id
+        );
+
+        return (
+          menuItem &&
+          requiresTakeaway(menuItem)
+        );
+      }
+    );
+
     if (
-      takeawayQuantity <
-      requiredTakeawayQuantity
+      hasTakeawayFood &&
+      takeawayQuantity === 0
     ) {
       showNotification(
-        `Please select ${requiredTakeawayQuantity} takeaway pack${
-          requiredTakeawayQuantity > 1
-            ? "s"
-            : ""
-        } for your order.`
+        "Please select at least one takeaway pack for your Rice, Pasta or Protein order."
       );
 
       return;
@@ -544,7 +530,7 @@ function App() {
     }
 
     /*
-     * Packing instructions are compulsory.
+     * Packing instructions.
      */
     if (
       !packingInstructions.trim()
@@ -590,6 +576,7 @@ I'd like to place an order.
 ━━━━━━━━━━━━━━
 ORDER
 ━━━━━━━━━━━━━━
+
 ${orderLines}
 
 TAKEAWAY PACKS:
@@ -603,6 +590,7 @@ TOTAL: ₦${grandTotal.toLocaleString()}
 ━━━━━━━━━━━━━━
 CUSTOMER DETAILS
 ━━━━━━━━━━━━━━
+
 Name: ${customerName.trim()}
 Phone: ${phone.trim()}
 
@@ -612,6 +600,7 @@ Specific Location: ${specificLocation.trim()}
 ━━━━━━━━━━━━━━
 PACKING INSTRUCTIONS
 ━━━━━━━━━━━━━━
+
 ${packingInstructions.trim()}
 
 Please send me the account details for payment.
@@ -631,16 +620,13 @@ Thank you!`;
 
   return (
     <div className="app">
-
       {/* =========================
           SCREEN NOTIFICATION
       ========================== */}
 
       {notification && (
         <div className="screen-notification">
-
           <div className="notification-content">
-
             <strong>
               Yara's Bite Kitchen
             </strong>
@@ -648,7 +634,6 @@ Thank you!`;
             <p>
               {notification}
             </p>
-
           </div>
 
           <button
@@ -660,7 +645,6 @@ Thank you!`;
           >
             <X size={18} />
           </button>
-
         </div>
       )}
 
@@ -669,30 +653,19 @@ Thank you!`;
       ========================== */}
 
       <header className="navbar">
-
         <div className="brand">
-
           <div className="brand-icon">
-
             <img
               src="/logo.jpg"
               alt="Yara's Bite Kitchen"
             />
-
           </div>
 
           <div>
+            <h1>YARA'S BITE</h1>
 
-            <h1>
-              YARA'S BITE
-            </h1>
-
-            <span>
-              Kitchen
-            </span>
-
+            <span>Kitchen</span>
           </div>
-
         </div>
 
         <button
@@ -702,21 +675,14 @@ Thank you!`;
             setCartOpen(true)
           }
         >
-
           <ShoppingBag size={20} />
 
-          <span>
-            Cart
-          </span>
+          <span>Cart</span>
 
           {cartCount > 0 && (
-            <b>
-              {cartCount}
-            </b>
+            <b>{cartCount}</b>
           )}
-
         </button>
-
       </header>
 
       {/* =========================
@@ -724,9 +690,7 @@ Thank you!`;
       ========================== */}
 
       <section className="hero">
-
         <div className="hero-content">
-
           <p className="eyebrow">
             FRESH • DELICIOUS • HOMEMADE
           </p>
@@ -745,7 +709,6 @@ Thank you!`;
           </p>
 
           <div className="hero-actions">
-
             <button
               type="button"
               className="hero-button"
@@ -769,22 +732,16 @@ Thank you!`;
             >
               View Cart
             </button>
-
           </div>
-
         </div>
 
-        {/* FLYER — KEPT FROM YOUR ORIGINAL HOME PAGE */}
-
+        {/* FLYER */}
         <div className="hero-image">
-
           <img
             src="/images/menu-flyer.jpg"
             alt="Yara's Bite meals"
           />
-
         </div>
-
       </section>
 
       {/* =========================
@@ -792,9 +749,7 @@ Thank you!`;
       ========================== */}
 
       <section className="delivery-banner">
-
         <div>
-
           <strong>
             Delivery Available
           </strong>
@@ -802,11 +757,9 @@ Thank you!`;
           <p>
             Ago-Iwoye • Oru • Ijebu-Igbo
           </p>
-
         </div>
 
         <MessageCircle size={28} />
-
       </section>
 
       {/* =========================
@@ -817,9 +770,7 @@ Thank you!`;
         id="menu"
         className="menu-section"
       >
-
         <div className="section-heading">
-
           <p className="eyebrow">
             OUR MENU
           </p>
@@ -834,22 +785,17 @@ Thank you!`;
             snacks, cakes, fries, grills,
             drinks and creamy shawarma.
           </p>
-
         </div>
 
         {/* =========================
             TAKEAWAY SECTION
         ========================== */}
 
-        {(requiredTakeawayQuantity > 0 ||
-          pendingItem ||
+        {(pendingItem ||
           takeawayQuantity > 0) && (
-
           <>
             <section className="takeaway-section">
-
               <div className="takeaway-info">
-
                 <p className="eyebrow">
                   TAKEAWAY
                 </p>
@@ -864,50 +810,33 @@ Thank you!`;
                   {" "}per pack
                 </p>
 
-                {requiredTakeawayQuantity >
-                  0 && (
-
-                  <small>
-                    Your current food order
-                    requires{" "}
-                    {requiredTakeawayQuantity}{" "}
-                    pack
-                    {requiredTakeawayQuantity >
-                    1
-                      ? "s"
-                      : ""}.
-                  </small>
-
-                )}
+                <small>
+                  Choose the number of packs
+                  you want. Food quantity is
+                  not limited by the number
+                  of packs.
+                </small>
 
                 {pendingItem && (
-
                   <div className="takeaway-warning">
-
                     Please select at least
-                    one takeaway pack to
-                    add{" "}
+                    one takeaway pack to add{" "}
                     <strong>
                       {pendingItem.item.name}
-                    </strong>
-                    {" "}to your order.
-
+                    </strong>{" "}
+                    to your order.
                   </div>
-
                 )}
-
               </div>
 
               <div className="takeaway-controls">
-
                 <button
                   type="button"
                   onClick={
                     decreaseTakeaway
                   }
                   disabled={
-                    takeawayQuantity <=
-                    requiredTakeawayQuantity
+                    takeawayQuantity <= 0
                   }
                   aria-label="Remove takeaway pack"
                 >
@@ -927,32 +856,9 @@ Thank you!`;
                 >
                   <Plus size={18} />
                 </button>
-
               </div>
-
             </section>
-
-            {takeawayQuantity <
-              requiredTakeawayQuantity && (
-
-              <p className="takeaway-warning">
-
-                Please select{" "}
-                {requiredTakeawayQuantity -
-                  takeawayQuantity}{" "}
-                more takeaway pack
-                {requiredTakeawayQuantity -
-                  takeawayQuantity >
-                1
-                  ? "s"
-                  : ""}.
-
-              </p>
-
-            )}
-
           </>
-
         )}
 
         {/* =========================
@@ -960,10 +866,8 @@ Thank you!`;
         ========================== */}
 
         <div className="category-scroll">
-
           {categories.map(
             (category) => (
-
               <button
                 key={category}
                 type="button"
@@ -981,10 +885,8 @@ Thank you!`;
               >
                 {category}
               </button>
-
             )
           )}
-
         </div>
 
         {/* =========================
@@ -992,21 +894,16 @@ Thank you!`;
         ========================== */}
 
         <div className="menu-grid">
-
           {filteredItems.map(
             (item) => (
-
               <MenuCard
                 key={item.id}
                 item={item}
                 onAdd={addToCart}
               />
-
             )
           )}
-
         </div>
-
       </main>
 
       {/* =========================
@@ -1014,38 +911,31 @@ Thank you!`;
       ========================== */}
 
       <footer>
-
         <div className="footer-brand">
-
           <div className="brand-icon">
-
             <img
               src="/logo.jpg"
               alt="Yara's Bite Kitchen logo"
             />
-
           </div>
 
           <div>
-
             <strong>
               YARA'S BITE
             </strong>
 
             <p>
               Delicious meals.
+              <br />
               Unforgettable bites.
             </p>
-
           </div>
-
         </div>
 
         <p>
           © {new Date().getFullYear()}{" "}
           Yara's Bite Kitchen.
         </p>
-
       </footer>
 
       {/* =========================
@@ -1053,27 +943,22 @@ Thank you!`;
       ========================== */}
 
       {cartOpen && (
-
         <div
           className="overlay"
           onClick={() =>
             setCartOpen(false)
           }
         >
-
           <aside
             className="cart-panel"
             onClick={(event) =>
               event.stopPropagation()
             }
           >
-
             {/* CART HEADER */}
 
             <div className="cart-header">
-
               <div>
-
                 <p className="eyebrow">
                   YOUR ORDER
                 </p>
@@ -1081,21 +966,19 @@ Thank you!`;
                 <h2>
                   Your Cart
                 </h2>
-
               </div>
 
               <div className="cart-header-actions">
-
                 {cart.length > 0 && (
-
                   <button
                     type="button"
                     className="clear-cart-button"
-                    onClick={clearCart}
+                    onClick={
+                      clearCart
+                    }
                   >
                     Clear Cart
                   </button>
-
                 )}
 
                 <button
@@ -1108,17 +991,13 @@ Thank you!`;
                 >
                   <X />
                 </button>
-
               </div>
-
             </div>
 
             {/* EMPTY CART */}
 
             {cart.length === 0 ? (
-
               <div className="empty-cart">
-
                 <ShoppingBag size={42} />
 
                 <h3>
@@ -1129,42 +1008,32 @@ Thank you!`;
                   Add something delicious
                   from the menu.
                 </p>
-
               </div>
-
             ) : (
-
               <>
-
                 {/* =====================
                     CART ITEMS
                 ====================== */}
 
                 <div className="cart-items">
-
                   {cart.map(
                     (
                       item,
                       index
                     ) => (
-
                       <div
                         className="cart-item"
                         key={`${item.id}-${item.option}`}
                       >
-
                         <div className="cart-item-info">
-
                           <strong>
                             {item.name}
                           </strong>
 
                           {item.option && (
-
                             <span>
                               {item.option}
                             </span>
-
                           )}
 
                           <small>
@@ -1172,11 +1041,9 @@ Thank you!`;
                             {item.price.toLocaleString()}{" "}
                             each
                           </small>
-
                         </div>
 
                         <div className="quantity">
-
                           <button
                             type="button"
                             onClick={() =>
@@ -1204,14 +1071,10 @@ Thank you!`;
                           >
                             <Plus size={14} />
                           </button>
-
                         </div>
-
                       </div>
-
                     )
                   )}
-
                 </div>
 
                 {/* =====================
@@ -1219,11 +1082,8 @@ Thank you!`;
                 ====================== */}
 
                 {takeawayQuantity > 0 && (
-
                   <div className="takeaway-summary">
-
                     <div>
-
                       <strong>
                         Takeaway Packs
                       </strong>
@@ -1232,16 +1092,13 @@ Thank you!`;
                         {takeawayQuantity} × ₦
                         {TAKEAWAY_PRICE.toLocaleString()}
                       </span>
-
                     </div>
 
                     <strong>
                       ₦
                       {takeawayTotal.toLocaleString()}
                     </strong>
-
                   </div>
-
                 )}
 
                 {/* =====================
@@ -1249,7 +1106,6 @@ Thank you!`;
                 ====================== */}
 
                 <div className="cart-total">
-
                   <span>
                     Food Total
                   </span>
@@ -1258,13 +1114,10 @@ Thank you!`;
                     ₦
                     {cartTotal.toLocaleString()}
                   </strong>
-
                 </div>
 
                 {takeawayQuantity > 0 && (
-
                   <div className="cart-total">
-
                     <span>
                       Takeaway
                     </span>
@@ -1273,13 +1126,10 @@ Thank you!`;
                       ₦
                       {takeawayTotal.toLocaleString()}
                     </strong>
-
                   </div>
-
                 )}
 
                 <div className="cart-total grand-total">
-
                   <span>
                     Total
                   </span>
@@ -1288,7 +1138,6 @@ Thank you!`;
                     ₦
                     {grandTotal.toLocaleString()}
                   </strong>
-
                 </div>
 
                 {/* =====================
@@ -1296,7 +1145,6 @@ Thank you!`;
                 ====================== */}
 
                 <div className="customer-form">
-
                   <h3>
                     Delivery Details
                   </h3>
@@ -1304,7 +1152,6 @@ Thank you!`;
                   {/* NAME */}
 
                   <div className="form-field">
-
                     <label htmlFor="customer-name">
                       Your Name *
                     </label>
@@ -1322,13 +1169,11 @@ Thank you!`;
                         )
                       }
                     />
-
                   </div>
 
                   {/* PHONE */}
 
                   <div className="form-field">
-
                     <label htmlFor="customer-phone">
                       Phone Number *
                     </label>
@@ -1344,13 +1189,11 @@ Thank you!`;
                         )
                       }
                     />
-
                   </div>
 
                   {/* DELIVERY AREA */}
 
                   <div className="form-field">
-
                     <label htmlFor="delivery-area">
                       Delivery Area *
                     </label>
@@ -1366,7 +1209,6 @@ Thank you!`;
                         )
                       }
                     >
-
                       <option value="">
                         Select delivery area
                       </option>
@@ -1382,15 +1224,12 @@ Thank you!`;
                       <option value="Ijebu-Igbo">
                         Ijebu-Igbo
                       </option>
-
                     </select>
-
                   </div>
 
                   {/* SPECIFIC LOCATION */}
 
                   <div className="form-field">
-
                     <label htmlFor="specific-location">
                       Specific Delivery Location *
                     </label>
@@ -1407,13 +1246,11 @@ Thank you!`;
                         )
                       }
                     />
-
                   </div>
 
                   {/* PACKING INSTRUCTIONS */}
 
                   <div className="form-field">
-
                     <label htmlFor="packing-instructions">
                       How should your order be packed? *
                     </label>
@@ -1430,7 +1267,6 @@ Thank you!`;
                         )
                       }
                     />
-
                   </div>
 
                   {/* WHATSAPP */}
@@ -1442,35 +1278,24 @@ Thank you!`;
                       sendToWhatsApp
                     }
                   >
-
                     <MessageCircle
                       size={20}
                     />
 
                     Send Order to WhatsApp
-
                   </button>
 
                   <p className="payment-note">
-
                     After sending your order,
                     we'll send the payment/account
                     details to you on WhatsApp.
-
                   </p>
-
                 </div>
-
               </>
-
             )}
-
           </aside>
-
         </div>
-
       )}
-
     </div>
   );
 }
