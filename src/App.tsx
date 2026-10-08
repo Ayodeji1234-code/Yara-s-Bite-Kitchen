@@ -146,20 +146,7 @@ function App() {
     );
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * Takeaway packs are NOT calculated from
-   * the amount of food in the cart.
-   *
-   * The customer chooses how many packs
-   * they want.
-   *
-   * Therefore this is always 0 for the
-   * purpose of food validation.
-   */
-  const requiredTakeawayQuantity = 0;
-
+ 
   /*
    * Takeaway cost.
    */
